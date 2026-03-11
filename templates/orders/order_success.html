@@ -1,0 +1,36 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Order Successful{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                    <h2>Order Placed Successfully!</h2>
+                    <p class="lead">Thank you for your order. Your order has been received and is being processed.</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Order ID:</strong> {{ order.order_id }}<br>
+                        <strong>Total Amount:</strong> ₹{{ order.total }}<br>
+                        <strong>Payment Method:</strong> {{ order.get_payment_method_display }}
+                    </div>
+                    
+                    <p>You will receive a confirmation email shortly with your order details.</p>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{% url 'orders:order_detail' order.order_id %}" class="btn btn-primary">
+                            <i class="fas fa-eye"></i> View Order Details
+                        </a>
+                        <a href="{% url 'products:product_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-bag"></i> Continue Shopping
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} - Product Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'products:product_list' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a></li>
+            <li class="breadcrumb-item active">{{ product.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Product Images -->
+        <div class="col-md-6">
+            <div class="card">
+                <img src="{% if product.image %}{{ product.image.url }}{% else %}{% static 'img/placeholder.jpg' %}{% endif %}" 
+                     class="card-img-top" alt="{{ product.name }}" id="mainImage">
+                
+                <!-- Product Gallery -->
+                {% if product.images.all %}
+                    <div class="card-body">
+                        <div class="row">
+                            {% for image in product.images.all %}
+                                <div class="col-3 mb-2">
+                                    <img src="{{ image.image.url }}" class="img-thumbnail gallery-image" 
+                                         alt="{{ image.alt_text }}" style="cursor: pointer; height: 80px; object-fit: cover;">
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Product Details -->
+        <div class="col-md-6">
+            <h1>{{ product.name }}</h1>
+            <p class="text-muted">Category: <a href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a></p>
+            
+            <!-- Price -->
+            <div class="mb-3">
+                {% if product.discount_price %}
+                    <span class="text-decoration-line-through text-muted fs-4">₹{{ product.price }}</span>
+                    <span class="text-danger fs-2 fw-bold">₹{{ product.discount_price }}</span>
+                    <span class="badge bg-danger">{{ product.get_discount_percentage }}% OFF</span>
+                {% else %}
+                    <span class="fs-2 fw-bold">₹{{ product.price }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Stock Status -->
+            <div class="mb-3">
+                {% if product.stock > 0 %}
+                    <span class="badge bg-success">In Stock ({{ product.stock }} available)</span>
+                {% else %}
+                    <span class="badge bg-danger">Out of Stock</span>
+                {% endif %}
+            </div>
+
+            <!-- Description -->
+            <div class="mb-4">
+                <h5>Description</h5>
+                <p>{{ product.description }}</p>
+            </div>
+
+            <!-- Add to Cart Form -->
+            {% if product.stock > 0 %}
+                <form action="{% url 'cart:add_to_cart' product.id %}" method="post" class="mb-4">
+                    {% csrf_token %}
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <label for="quantity" class="form-label">Quantity:</label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1" max="{{ product.stock }}" style="width: 80px;">
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            {% endif %}
+
+            <!-- Wishlist -->
+            <div class="mb-4">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'accounts:add_to_wishlist' product.id %}" class="btn btn-outline-danger">
+                        <i class="fas fa-heart"></i> Add to Wishlist
+                    </a>
+                {% else %}
+                    <a href="{% url 'accounts:login' %}" class="btn btn-outline-danger">
+                        <i class="fas fa-heart"></i> Login to Add to Wishlist
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Product Info -->
+            <div class="row">
+                <div class="col-6">
+                    <strong>Product ID:</strong> {{ product.id }}
+                </div>
+                <div class="col-6">
+                    <strong>SKU:</strong> {{ product.slug|upper }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Reviews -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3>Customer Reviews</h3>
+            
+            {% if reviews %}
+                {% for review in reviews %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="card-title">{{ review.user.username }}</h6>
+                                <small class="text-muted">{{ review.created|date:"M d, Y" }}</small>
+                            </div>
+                            <div class="mb-2">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-warning"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <p class="card-text">{{ review.comment }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">No reviews yet. Be the first to review this product!</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    {% if related_products %}
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3>Related Products</h3>
+                <div class="row">
+                    {% for related_product in related_products %}
+                        <div class="col-md-3 mb-4">
+                            <div class="card product-card h-100">
+                                {% if related_product.discount_price %}
+                                    <div class="discount-badge">
+                                        {{ related_product.get_discount_percentage }}% OFF
+                                    </div>
+                                {% endif %}
+                                <img src="{% if related_product.image %}{{ related_product.image.url }}{% else %}{% static 'img/placeholder.jpg' %}{% endif %}" 
+                                     class="card-img-top" alt="{{ related_product.name }}" style="height: 150px; object-fit: cover;">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ related_product.name|truncatewords:5 }}</h6>
+                                    <div class="mb-2">
+                                        {% if related_product.discount_price %}
+                                            <span class="text-danger fw-bold">₹{{ related_product.discount_price }}</span>
+                                        {% else %}
+                                            <span class="fw-bold">₹{{ related_product.price }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ related_product.get_absolute_url }}" class="btn btn-primary btn-sm">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Gallery image click handler
+    document.querySelectorAll('.gallery-image').forEach(img => {
+        img.addEventListener('click', function() {
+            document.getElementById('mainImage').src = this.src;
+        });
+    });
+</script>
+{% endblock %}

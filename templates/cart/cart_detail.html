@@ -1,0 +1,196 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Shopping Cart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Shopping Cart</h1>
+    
+    {% if cart_items %}
+        <div class="row">
+            <!-- Cart Items -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Cart Items ({{ cart.get_total_items }})</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for item in cart_items %}
+                            <div class="row align-items-center mb-3 pb-3 border-bottom">
+                                <div class="col-md-2">
+                                    <img src="{% if item.product.image %}{{ item.product.image.url }}{% else %}{% static 'img/placeholder.jpg' %}{% endif %}" 
+                                         alt="{{ item.product.name }}" class="img-fluid" style="max-height: 80px; object-fit: cover;">
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>{{ item.product.name }}</h6>
+                                    <small class="text-muted">{{ item.product.category.name }}</small>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="input-group input-group-sm">
+                                        <button class="btn btn-outline-secondary update-quantity" data-item-id="{{ item.id }}" data-action="decrease">-</button>
+                                        <input type="number" class="form-control text-center quantity-input" value="{{ item.quantity }}" min="1" max="{{ item.product.stock }}" data-item-id="{{ item.id }}">
+                                        <button class="btn btn-outline-secondary update-quantity" data-item-id="{{ item.id }}" data-action="increase">+</button>
+                                    </div>
+                                    <small class="text-muted">Stock: {{ item.product.stock }}</small>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <strong>₹{{ item.product.get_effective_price }}</strong>
+                                    {% if item.product.discount_price %}
+                                        <br><small class="text-decoration-line-through text-muted">₹{{ item.product.price }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <strong class="item-total" data-item-id="{{ item.id }}">₹{{ item.get_total_price }}</strong>
+                                    <br>
+                                    <a href="{% url 'cart:remove_from_cart' item.product.id %}" class="btn btn-sm btn-outline-danger mt-1">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Summary -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal ({{ cart.get_total_items }} items):</span>
+                            <strong>₹{{ cart.get_total_price }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping:</span>
+                            <strong>Free</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tax:</span>
+                            <strong>₹0</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5>Total:</h5>
+                            <h5 class="cart-total">₹{{ cart.get_total_price }}</h5>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'orders:checkout' %}" class="btn btn-success">
+                                <i class="fas fa-credit-card"></i> Proceed to Checkout
+                            </a>
+                            <a href="{% url 'products:product_list' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-arrow-left"></i> Continue Shopping
+                            </a>
+                            <a href="{% url 'cart:clear_cart' %}" class="btn btn-outline-danger">
+                                <i class="fas fa-trash"></i> Clear Cart
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Promo Code -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6>Promo Code</h6>
+                    </div>
+                    <div class="card-body">
+                        <form class="d-flex">
+                            <input type="text" class="form-control me-2" placeholder="Enter promo code">
+                            <button type="submit" class="btn btn-outline-primary">Apply</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+            <h3>Your cart is empty</h3>
+            <p class="text-muted">Add some products to your cart to get started!</p>
+            <a href="{% url 'products:product_list' %}" class="btn btn-primary">
+                <i class="fas fa-shopping-bag"></i> Start Shopping
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// Update quantity functionality
+document.querySelectorAll('.update-quantity').forEach(button => {
+    button.addEventListener('click', function() {
+        const itemId = this.dataset.itemId;
+        const action = this.dataset.action;
+        const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+        let currentValue = parseInt(input.value);
+        
+        if (action === 'increase') {
+            input.value = currentValue + 1;
+        } else if (action === 'decrease' && currentValue > 1) {
+            input.value = currentValue - 1;
+        }
+        
+        updateCartItem(itemId, input.value);
+    });
+});
+
+// Handle direct input changes
+document.querySelectorAll('.quantity-input').forEach(input => {
+    input.addEventListener('change', function() {
+        const itemId = this.dataset.itemId;
+        updateCartItem(itemId, this.value);
+    });
+});
+
+function updateCartItem(itemId, quantity) {
+    fetch(`/cart/update/${itemId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: `quantity=${quantity}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update item total
+            const itemTotal = document.querySelector(`.item-total[data-item-id="${itemId}"]`);
+            if (itemTotal) {
+                itemTotal.textContent = `₹${data.item_total}`;
+            }
+            
+            // Update cart total
+            const cartTotal = document.querySelector('.cart-total');
+            if (cartTotal) {
+                cartTotal.textContent = `₹${data.cart_total_price}`;
+            }
+            
+            // Update cart count in navigation
+            document.getElementById('cart-count').textContent = data.cart_total;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
